@@ -1,0 +1,391 @@
+---
+title: "01 - Inspection of data"
+author: "Jens Linden"
+output:
+  html_document:
+    number_sections: yes
+    toc: yes
+---
+
+STATUS: Development
+
+# Management summary
+
+* Load raw data
+* Inspect data and perform initial data checks
+* Preprocessing data
+* Saving preprocessed data to file 
+    + Preprocessed review data table
+    + Hotel master data table
+    + Tag table
+    + Table for tag statistics
+
+The following hypotheses are tested:
+
+| ID | Hypothesis | Result|
+|------|-----------------------------------|-----------------------------------|
+| H01-01 | The data provided for the challenge is identical to the [Kaggle 515K Hotel Reviews Data in Europe](https://www.kaggle.com/jiashenliu/515k-hotel-reviews-data-in-europe) | Yes |
+| H01-02 | Review_Date is consistently in format mm/dd/yyyy | Yes |
+| H01-03 | Geolocations are available for all hotels | No, missing for 17 hotels |
+| H01-04 | The hotels are from all over Europe | No, the hotels are from 6 cities only (London, Amsterdam, Paris, Milan, Barcelona, Vienna) |
+| H01-05 | All free text review fields contain English language | No, 92% of negative, 94% of positive reviews are in English. |
+| H01-06 | Negative and positive reviews are done in the same language per review | No, there are some reviews where different languages are use within one row of review |
+| H01-07 | The reviews are distributed evenly over a given time frame | Yes, nearly uniformly distributed between 2015-08-04 and 2017-08-3 (2 years) |
+| H01-08 | No duplicated reviews are contained within the data | No, 527 duplicates have been removed |
+| H01-09 | There exists a well defined short lists of tags used | No, in total there are 2,428 different tags. However, the most frequently used 25 tags make up 87% of all tags. |
+
+
+# Inits
+Initialisations and loading of libraries required:
+```{r, warning = FALSE, message = FALSE, results = FALSE}
+rm(list=ls())   # clear all
+graphics.off()  # close all
+Sys.setenv(LANG = "en")
+# Libs
+# library(checkpoint) # Package management to avoid incompatibilities; not required when dockerized
+# checkpoint('2017-10-01') # Use all packages as of date provided
+library(data.table) # Efficient and fast data munging in R; just do it
+options(datatable.auto.index=FALSE) # Bug fixing for v < 1.9.5
+library(ggplot2) # Good quality plots
+library(rprojroot) # Rroot folder management
+ROOT <- find_root(has_file("PROJECT_ROOT_DIR"))
+library(knitr) # Knitting R markdown reports
+library(skimr) # Nice initial data overview
+library(DataExplorer) # Nice summary statistics
+library(leaflet) # Interacitve maps
+library(sp) # Spatial data package
+library(rworldmap) # Enables mapping of country level and gridded user datasets.
+library(digest) # Hash computation
+library(tidyr) # E.g. unnest data table for tags
+source(paste0(ROOT, "/02_code/lib.R"))
+options(width = 100)
+```
+
+# Settings
+All settings for this reports at a single spot here>
+```{r}
+s <- list() # List for storing settings
+s$file_inf <- paste0(ROOT, '/01_data/02_unzipped/ID01/Hotel_Reviews.csv') # Data file name for challenge
+s$file_kag <- paste0(ROOT, '/01_data/02_unzipped/ID02/Hotel_Reviews.csv') # Data file name form Kaggle
+```
+
+# Load data
+```{r}
+# Load inf data from csv
+dt_inf <- fread(s$file_inf)
+# Load Kaggle data from csv
+dt_kag <- fread(s$file_kag)
+```
+
+# Compare data sets
+```{r}
+dim(dt_inf)
+dim(dt_kag)
+# Same dimensions
+
+# Identical?
+all.equal(dt_inf, dt_kag)
+# Yes, H1 correct.
+```
+
+Cleanup as data is identical.
+```{r}
+rev <- dt_inf 
+rm(list = c('dt_kag', 'dt_inf'))
+```
+
+# Data type conversions
+```{r}
+# What re the coltypes
+col_types(rev)
+```
+
+Loading via `data.table::fread` coerced nearly perfect, just date is required to be coerced.
+
+## Review_Date
+```{r}
+rev$Review_Date[1:10]
+# Assume Review_Date is in format mm/dd/yyyy
+rev[!grepl(pattern = '^\\d{1,2}\\/\\d{1,2}\\/\\d{4}', x = Review_Date)] # Yes
+# Change data type to date
+rev[, Review_Date := as.Date(Review_Date, format = '%m/%d/%Y')]
+# Check
+rev$Review_Date[1:5]
+# Any NA created?
+rev[is.na(Review_Date)] # No
+```
+
+## Review texts
+Convert to lower case.
+```{r}
+rev[, Negative_Review := tolower(Negative_Review)]
+rev[, Positive_Review := tolower(Positive_Review)]
+```
+
+
+
+# Exploratary data analysis
+Exploratory data analysis is the process to get to know the data, so that hypothesis can be generated and tested.
+
+## Initial inspection of data
+```{r}
+# Inspect first line
+knitr::kable(rev[1])
+
+# Quick overview
+skim_with(numeric = list(hist = NULL),
+          integer = list(hist = NULL)) # Do not show histogram as this is not displayed nicely within R markdown
+skim(rev)
+
+# Get introduced to your dataset using the DataExplorer package
+introduce(rev) 
+plot_intro(rev)
+plot_missing(rev)
+```
+
+## Visualize distributions for all continuous features:
+
+```{r}
+plot_histogram(rev)
+```
+
+
+# Amend dataset
+
+## Country
+```{r}
+rev[!is.na(lat), country := coords2country(cbind(lng, lat))]
+# Inspect
+rev[, .N, by = country]
+```
+
+
+# Hotel master data
+
+## Generate master data
+```{r}
+# Look at column names
+names(rev)
+# Pick hotel related columns
+cols_hot <- c('Hotel_Name', 'Hotel_Address', 'country', 'lat', 'lng')
+# Inspect
+rev[1:3, cols_hot, with = F]
+# Take only unique entries
+hot <- unique(rev[, cols_hot, with = F])
+hot[1:5]
+dim(hot)
+```
+
+Note, that there where 1,493 unique hotel addresses, 1,492 unique hotel names and now 1,494 unique combinations of name, address and geolocation.  This implies, that there are still a few duplicates in the master data.
+
+## Check hotel name
+Note that there are names with only two letters. Check:
+
+```{r}
+hot[, n_name := nchar(Hotel_Name)]
+hot[n_name <= 7] # Inspect names with less than 8 characters
+```
+
+Looks ok, aparat from name `41`
+
+Inspect duplicates
+```{r}
+(dup_name <- unique(hot[duplicated(Hotel_Name), Hotel_Name]) )
+hot[Hotel_Name %in% dup_name] # Looks ok, just same name
+```
+
+## Check hotel address
+```{r}
+(dup_addr <- unique(hot[duplicated(Hotel_Address), Hotel_Address]) )
+hot[Hotel_Address %in% dup_addr] # Looks ok, maybe changed name or same building
+```
+
+## Check geolocations
+```{r}
+hot[is.na(lat) | is.na(lng)]
+# 17 hotels with missing geolocations
+```
+
+
+## Is average hotel score unique for given hotel?
+```{r}
+dim(hot)
+dim(unique(rev[, c(cols_hot, 'Average_Score'), with = F]))
+```
+
+Yes, so take average score as part of master data.
+```{r}
+hot <- unique(rev[, c(cols_hot, 'Average_Score'), with = F])
+```
+
+
+
+
+## Interactive visualization of hotel locations
+Kindly borrowed from [Jason Liu](https://www.kaggle.com/jiashenliu/quick-visualization-of-data) using the awesome `leaflet` package.
+```{r results='asis' ,message=FALSE, warning=FALSE}
+leaflet(data = hot) %>% 
+  addProviderTiles(providers$Stamen.TonerLite) %>% 
+  addMarkers(popup = ~Hotel_Address, clusterOptions = markerClusterOptions())
+```
+
+There appear to be only dedicated locations:
+
+* London
+* Amsterdam
+* Paris
+* Milan
+* Barcelona
+* Vienna
+
+# Inspect review data
+
+## Review language 
+### Detect language of negative review texts
+```{r}
+# Negative reviews
+rev[, lang_neg_rev := cld2::detect_language(Negative_Review)] 
+rev[, .N, by = lang_neg_rev][order(N, decreasing = T)]
+# Inspect
+rev[lang_neg_rev == "de", Negative_Review] # Looks alright!
+```
+
+How much in English?
+```{r}
+rev[lang_neg_rev == "en", .N] / nrow(rev) # 92%
+```
+
+
+
+### Detect language of positive review texts
+```{r}
+rev[, lang_pos_rev := cld2::detect_language(Positive_Review)]
+```
+
+How much in English?
+```{r}
+rev[lang_pos_rev == "en", .N] / nrow(rev) # 94%
+```
+
+
+
+### Reviews in different languages
+```{r}
+# How many?
+rev[lang_neg_rev == "en" & lang_pos_rev != "en", .N]
+# Inspect
+rev[lang_neg_rev == "en" & lang_pos_rev != "en", .(Negative_Review, Positive_Review)][1]
+```
+
+
+## Time of review
+```{r}
+ggplot(rev) + geom_density(aes(x = Review_Date))
+rev[, min(Review_Date)]
+rev[, max(Review_Date)]
+```
+
+More or less uniquely distributed over time
+
+## Duplicate reviews
+Are there any duplicates?
+```{r}
+sum(duplicated(rev)) # Yes! 527
+# Create hash per row (could simply use duplicated function but so easy to inspect and UID generated)
+cols <- names(rev)
+rev$input_hash <- apply(rev[ , cols , with = F] , 1 , paste , collapse = "-" )
+rev$hash <- apply(rev[ , 'input_hash' , with = F] , 1 , digest , algo = "md5" )
+rev$input_hash <- NULL
+# Find duplicate hashes
+dup_hash <- rev[duplicated(rev$hash), unique(hash)]
+length(dup_hash) # 527
+# Inspect example
+rev[hash == dup_hash[1]]
+# Remove dups
+rev <- rev[!duplicated(rev)]
+```
+
+## Plausicheck word counts
+```{r}
+# Inspect
+rev[, .N, by = Review_Total_Negative_Word_Counts][order(N)]
+rev[Review_Total_Negative_Word_Counts == 0, .(Review_Total_Negative_Word_Counts, Negative_Review)][1:3]
+rev[Review_Total_Negative_Word_Counts == 2, .(Review_Total_Negative_Word_Counts, Negative_Review)][1:3]
+rev[Review_Total_Negative_Word_Counts == 3, .(Review_Total_Negative_Word_Counts, Negative_Review)][1:3]
+rev[Review_Total_Negative_Word_Counts == 4, .(Review_Total_Negative_Word_Counts, Negative_Review)][1:3]
+# Roughly right, but not exact. is 'no negative' default value?
+rev[, .N, by = Negative_Review][order(N, decreasing = T)][1:10]
+rev[is.na(Negative_Review), .N]
+# What about positive?
+rev[, .N, by = Positive_Review][order(N, decreasing = T)][1:10]
+```
+
+# Tag data
+
+## Extract tag data from review data
+Tags are given as nested elements with a 1:n relationship for review and tag. Generate data table in long format.
+
+```{r}
+# Split tag with respect to ','
+rev[, tag_split := strsplit(rev[, Tags], ',')]
+# Extract nested list to data table in long format
+tags <- unnest(rev[, .(hash, tag_split)])
+# Inspect 
+print(tags)
+# Clean up 
+setnames(tags, 'tag_split', 'tag') # Rename column
+tags[, tag := gsub(pattern = ']', replacement = '', x = tag, fixed = T)] # Remove characters
+tags[, tag := gsub(pattern = '[', replacement = '', x = tag, fixed = T)] # Remove characters
+tags[, tag := gsub(pattern = "'", replacement = '', x = tag, fixed = T)] # Remove characters
+tags[, tag := trim(tag)] # Remove leading and trailing blanks
+tags[, tag := tolower(tag)]
+# Inspect
+print(tags)
+```
+
+## Inspect most frequent tag data
+```{r}
+# Inspect count
+(tag_stats <- tags[, .N, by = tag][order(N, decreasing = T)]) # 2428 different tags
+# Look at most frequent ones
+tag_stats[1:20]
+tag_stats[N != 1]
+# Look at frequency distribution
+ggplot(tag_stats) + geom_point(aes(x = 1:nrow(tag_stats), y = N))
+# Find ellbow
+ggplot(tag_stats[N >= 300]) + geom_point(aes(x = 1:nrow(tag_stats[N >= 300]), y = N))
+# Ellbow around 25
+tag_stats[1:25] # Look at top tags
+tags_most_freq <- tag_stats[1:25, tag]
+# How much percentage covered with these tags
+tags[tag %in% tags_most_freq, .N] / nrow(tags) # The top 25 tags cover 87% of tags, pareto
+```
+
+## Inspect nights stayed tags
+```{r}
+tag_stats[grepl(pattern = "stay", x = tag)]
+# Inspect top 25 without stay tags
+tag_stats[!grepl(pattern = "stay", x = tag), tag][1:25]
+```
+
+## Inspect room tags
+```{r}
+tag_stats[grepl(pattern = "room", x = tag)]
+# Most tags are concerned with the room
+tag_stats[grepl(pattern = "room", x = tag)][1:25]
+# Inspect remaining tags
+tag_stats[!grepl(pattern = "room", x = tag) &
+           !grepl(pattern = "stay", x = tag), 
+          tag][1:25]
+```
+
+
+
+# Save preprocessed data
+```{r}
+saveRDS(rev,  paste0(ROOT, '/01_data/03_preprocessed/reviews.rds'))
+saveRDS(hot,  paste0(ROOT, '/01_data/03_preprocessed/hotels.rds'))
+saveRDS(tags,  paste0(ROOT, '/01_data/03_preprocessed/tags.rds'))
+saveRDS(tag_stats,  paste0(ROOT, '/01_data/03_preprocessed/tag_stats.rds'))
+```
+
