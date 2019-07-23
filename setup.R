@@ -61,7 +61,7 @@ unzip(zipfile = file_zip, exdir = dir_unzip) # Unzip files
 
 
 # ID04 - hotelsbase
-file_zip <- paste0(ROOT, '/01_data/01_raw/ID04_hotelsbase/adownload.zip') 
+file_zip <- paste0(ROOT, '/01_data/01_raw/ID04_hotelsbase/hotelsbase_prep.zip') 
 dir_unzip <- paste0(ROOT, '/01_data/02_unzipped/ID04')
 unzip(zipfile = file_zip, exdir = dir_unzip) # Unzip files 
 

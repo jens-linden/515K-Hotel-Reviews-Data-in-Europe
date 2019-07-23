@@ -20,7 +20,7 @@ STATUS: Development
     + Tag table
     + Table for tag statistics
 
-The following hypotheses are tested:
+The following hypotheses have been tested:
 
 | ID | Hypothesis | Result|
 |------|-----------------------------------|-----------------------------------|
@@ -33,6 +33,8 @@ The following hypotheses are tested:
 | H01-07 | The reviews are distributed evenly over a given time frame | Yes, nearly uniformly distributed between 2015-08-04 and 2017-08-3 (2 years) |
 | H01-08 | No duplicated reviews are contained within the data | No, 527 duplicates have been removed |
 | H01-09 | There exists a well defined short lists of tags used | No, in total there are 2,428 different tags. However, the most frequently used 25 tags make up 87% of all tags. |
+| H01-10 | The number of reviews per hotel strongly differs | Yes. There are hotels with nearly 5,000 reviews within the two years observed and hotels with less than 10 reveiews. |
+| H01-11 | The review data contains only data of still existing and operating hotels | Yes, apart from one hotel, for which no recent (in 2017) reviews exist. All other hotels appear to have constantly received reviews during the observation period. |
 
 
 # Inits
@@ -174,6 +176,8 @@ rev[1:3, cols_hot, with = F]
 hot <- unique(rev[, cols_hot, with = F])
 hot[1:5]
 dim(hot)
+# Is combination of name and address uid?
+sum(duplicated(hot[, .(Hotel_Name, Hotel_Address)])) # yes.
 ```
 
 Note, that there where 1,493 unique hotel addresses, 1,492 unique hotel names and now 1,494 unique combinations of name, address and geolocation.  This implies, that there are still a few duplicates in the master data.
@@ -218,6 +222,15 @@ Yes, so take average score as part of master data.
 hot <- unique(rev[, c(cols_hot, 'Average_Score'), with = F])
 ```
 
+## Generate hotel id
+```{r}
+hot <- cbind(data.table(id_hot = 1:nrow(hot)), hot)
+# Also add to review data
+rev <- merge(rev, 
+             hot[, .(id_hot, Hotel_Name, Hotel_Address)],
+             by = c("Hotel_Name", "Hotel_Address"),
+             all.x = T)
+```
 
 
 
@@ -237,6 +250,33 @@ There appear to be only dedicated locations:
 * Milan
 * Barcelona
 * Vienna
+
+
+## Add city column and city center geolocations
+
+```{r}
+# Inspect
+hot[, .N, by = country]
+# Map cities and geolocations (source https://www.latlong.net)
+hot[country == "United Kingdom", c('city', 'city_lat', 'city_lng') := list('London', 51.509865, -0.118092)]
+hot[country == "Netherlands", c('city', 'city_lat', 'city_lng') := list('Amsterdam', 52.37403, 4.88969)]
+hot[country == "France", c('city', 'city_lat', 'city_lng') := list('Paris', 48.8566, 2.3522)]
+hot[country == "Spain", c('city', 'city_lat', 'city_lng') := list('Barcelona', 41.3896, 2.1624)]
+hot[country == "Italy", c('city', 'city_lat', 'city_lng') := list('Milan', 45.46427, 9.18951)]
+hot[country == "Austria", c('city', 'city_lat', 'city_lng') := list('Vienna', 48.210033, 16.363449)]
+```
+
+
+## Add number of reviews per hotel
+```{r}
+# Compute and add number of reviews column
+hot <- merge(hot,
+             rev[, .(n_reviews = .N), by = id_hot],
+             by = 'id_hot')
+```
+
+
+
 
 # Inspect review data
 
@@ -303,6 +343,8 @@ length(dup_hash) # 527
 rev[hash == dup_hash[1]]
 # Remove dups
 rev <- rev[!duplicated(rev)]
+# Use hash as id column: rename
+setnames(rev, 'hash', 'id_rev')
 ```
 
 ## Plausicheck word counts
@@ -320,6 +362,55 @@ rev[is.na(Negative_Review), .N]
 rev[, .N, by = Positive_Review][order(N, decreasing = T)][1:10]
 ```
 
+
+## Inspect hotels with most and fewest reviews respectively
+```{r}
+# How many reviews per hotel?
+rev[, .N, by = id_hot][order(N)]
+# Inspect
+# Inspect reviews for hotes with many and few reviews
+ggplot(data = rev[id_hot %in% c(1019, 1383, 187, 487)],
+       aes(x = Review_Date, y = Reviewer_Score)) +
+  geom_point() + 
+  facet_grid("id_hot") + 
+  ggtitle("Top two hotels with most and fewest reviews respectively")
+```
+
+## Are there hotels which are no longer open?
+
+Generate stat data for reviews over time
+```{r}
+# Aggregate and join together
+stat_rev <- merge(
+  hot[, .(id_hot)],
+  rev[Review_Date < '2016-01-01', .(n_b4_2016 = .N), by = id_hot],
+  by = 'id_hot',
+  all.x = T)
+stat_rev <- merge(
+  stat_rev,
+  rev[Review_Date > '2017-01-01', .(n_after_2017 = .N), by = id_hot],
+  by = 'id_hot',
+  all.x = T)
+# Any NAs?
+inspect_na(stat_rev) # Yes, set to zero.
+stat_rev[is.na(n_b4_2016), n_b4_2016 := 0]
+stat_rev[is.na(n_after_2017), n_after_2017 := 0]
+inspect_na(stat_rev)
+```
+
+Inspect hotels, where there are no recent reviews
+```{r}
+stat_rev[n_after_2017 == 0] # Only two hotels, inspect
+ggplot(data = rev[id_hot %in% c(7, 80)],
+       aes(x = Review_Date, y = Reviewer_Score)) +
+  geom_point() + 
+  facet_grid("id_hot")
+```
+
+The hotel with id 7 seems indeed to have no recent reviews, whilst the hotel with id 80 simply appears to have very few reviews and is not necessarily closed at the end of the observed time range.
+
+
+
 # Tag data
 
 ## Extract tag data from review data
@@ -329,7 +420,7 @@ Tags are given as nested elements with a 1:n relationship for review and tag. Ge
 # Split tag with respect to ','
 rev[, tag_split := strsplit(rev[, Tags], ',')]
 # Extract nested list to data table in long format
-tags <- unnest(rev[, .(hash, tag_split)])
+tags <- unnest(rev[, .(id_rev, tag_split)])
 # Inspect 
 print(tags)
 # Clean up 
