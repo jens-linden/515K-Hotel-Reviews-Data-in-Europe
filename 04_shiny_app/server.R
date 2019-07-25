@@ -32,9 +32,20 @@ shinyServer(function(input, output, session) {
   hotel_data <- reactive({
     # some processing
     dt <- readRDS("data/80_res_hot.rds")
+    # Filter cluster
     if(input$sel_cluster != "all") {
       dt <- dt[clus == input$sel_cluster]
     }
+    # Filter leader lagger
+    if(input$sel_leadlag != "all") {
+      dt <- dt[lead_lag == input$sel_leadlag]
+    }
+    # Filter city
+    if(input$sel_city != "all") {
+      dt <- dt[city == input$sel_city]
+    }
+    
+    
     return(dt)
   })
   

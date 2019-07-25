@@ -58,6 +58,20 @@ shinyUI(
                         selectInput("sel_cluster", "Choose cluster",
                                     c("all", "1", "2", "3",  "4",  "5"),
                                     selected = "all"
+                        ),
+                        # ======================================================================-
+                        # Select ... ----
+                        # ======================================================================-
+                        selectInput("sel_leadlag", "Choose leader or lagger",
+                                    c("all", "leader", "lagger", "middle"),
+                                    selected = "all"
+                        ),
+                        # ======================================================================-
+                        # Select ... ----
+                        # ======================================================================-
+                        selectInput("sel_city", "Choose city",
+                                    c("all", "Amsterdam", "London", "Paris", "Barcelona", "Milan", "Vienna"),
+                                    selected = "all"
                         )
                       ) # end wellPanel
                ) # end column
