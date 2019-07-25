@@ -106,7 +106,7 @@ hot[n_reviews < 30, .N] # 72 hotels have less than 30 reviews; remove when trend
 
 # Save results to file
 ```{r}
-saveRDS(rev_trend,  paste0(ROOT, '/01_data/04_results/rev_trend.rds'))
+saveRDS(rev_trend,  paste0(ROOT, '/01_data/04_results/10_rev_trend.rds'))
 ```
 
 

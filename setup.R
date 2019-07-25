@@ -28,7 +28,9 @@ install.packages(c('data.table',
                    'stringr',
                    'tidyr',
                    'tm',
-                   'SnowballC'))
+                   'SnowballC', 
+                   'caret',
+                   'factoextra'))
 
 
 #################################################################################################+

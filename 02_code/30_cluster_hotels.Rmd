@@ -1,0 +1,124 @@
+---
+title: "30 - Cluster hotels"
+author: "Jens Linden"
+output:
+  html_document:
+    number_sections: yes
+    toc: yes
+---
+
+STATUS: Development
+
+# Management summary
+
+The objective is to find 'similar' hotels in order to have peer groups in which each hotel can be benchmarked and compared against. Therefore, the set of ~ 1,500 hotels is clustered based on hotel-characterising data.
+
+
+# Inits
+Initialisations and loading of libraries required:
+```{r, warning = FALSE, message = FALSE, results = FALSE}
+rm(list=ls())   # clear all
+graphics.off()  # close all
+Sys.setenv(LANG = "en")
+# Libs
+# library(checkpoint) # Package management to avoid incompatibilities; not required when dockerized
+# checkpoint('2017-10-01') # Use all packages as of date provided
+library(data.table) # Efficient and fast data munging in R; just do it
+options(datatable.auto.index=FALSE) # Bug fixing for v < 1.9.5
+library(ggplot2) # Good quality plots
+library(rprojroot) # Rroot folder management
+ROOT <- find_root(has_file("PROJECT_ROOT_DIR"))
+library(caret) # Classification And REgression Training
+library(factoextra) # clustering algorithms & visualization
+source(paste0(ROOT, "/02_code/lib.R"))
+options(width = 100)
+```
+
+# Load data
+```{r}
+(abt_hot <- readRDS(paste0(ROOT, '/01_data/03_preprocessed/abt_hot.rds')))
+```
+
+# Preprocessing
+
+## Ensure right data types for statistical analyses
+```{r}
+# Inspect data types
+dt_classes(abt_hot)
+# Check if NAs
+inspect_na(abt_hot)
+# All fine as character will be dummy encoded below
+```
+
+## Dummy encoding of categorical variables
+```{r}
+# Define model matrix
+mm <- as.data.table(model.matrix(
+  as.formula(paste0( "id_hot ~ city")), 
+  data = abt_hot
+)[, -1]) # -1 to remove intercept 
+# Inspect
+print(mm[1:3]) # Amsterdam in baseline
+# Build final model matrix
+mm <- cbind(abt_hot[, .(dist_city_centre, Total_Number_of_Reviews)],
+            mm)
+# Inspect
+print(mm[1:3])
+```
+
+## Centering and scaling of numeric values
+Such that weighting within k-means is equal for all features. Use the awesome caret package for machine learning.
+```{r}
+# Define model for preprocessing
+mod_prep <- preProcess(
+  x = mm,
+  method = c("center", "scale"))
+# Apply model to data
+abt_hot_prep <- predict(mod_prep, mm)
+# Inspect if worked
+abt_hot_prep[1:3]
+```
+
+
+
+# K-means clustering
+
+
+## Ellbow method to find optimal `k`
+```{r}
+set.seed(123) # Random seed to create reproducible results
+fviz_nbclust(mm, kmeans, method = "wss")
+# Can go for 4 or 6 clusters
+```
+
+## Compute final cluster
+```{r}
+set.seed(123) # Random seed to create reproducible results
+clus <- kmeans(mm, 5) # Choose k such that also enough intances are wthin each cluster
+# Visually inspect clusters looking at first two principal components
+fviz_cluster(clus, data = mm)
+# Add to data
+abt_hot$clus <- clus$cluster
+```
+
+## Check if city is dominating cluster creation
+If so, the dummy variables could be scaled.
+```{r}
+ggplot(abt_hot) +
+  geom_histogram(aes(x = as.factor(city)), stat="count") +
+  facet_grid('clus')
+ggplot(abt_hot) +
+  geom_histogram(aes(x = clus)) +
+  facet_grid('city')
+abt_hot[, .N, by = c('clus')]
+```
+
+Choose `5` clusters as tradeoff between total within-cluster sum of square and number of instances in cluster. Cluster `2` has feweest instances with 50 hotels inside. Just enough to perform statistical inference.
+
+
+# Store results
+Save ID column and cluster column, so no redundant data and can easily be joined for subsequent analyses.
+```{r}
+saveRDS(abt_hot[, .(id_hot, clus)], paste0(ROOT, '/01_data/04_results/30_hotel_cluster.rds'))
+```
+
