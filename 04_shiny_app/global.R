@@ -19,7 +19,6 @@
 library(shiny) # Shiny App using R
 library(ggplot2) # High quality plots
 library(ggmap) # maps
-library(cowplot) # Multiple plot arrangement
 theme_set(theme_gray()) # Set standard ggplot gray style
 library(data.table) # Data munging
 library(DT) # Shiny interactive data tables

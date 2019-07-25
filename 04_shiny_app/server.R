@@ -242,7 +242,7 @@ shinyServer(function(input, output, session) {
     if(data[id_hot == hotel_selected(), rev_trend] < thresh_25) {
       rec <- rbind(
         rec,
-        data.table(Recommendation = "Your scores are getting worse over time. Try to revert the negative trend!")
+        data.table(Recommendation = "Your scores are getting worse over time. Try to revert the negative trend! Inspect drivers of statistical tree model to deduce insights.")
       )
     } else if(data[id_hot == hotel_selected(), rev_trend] > thresh_75) {
       rec <- rbind(
@@ -254,7 +254,7 @@ shinyServer(function(input, output, session) {
     if(data[id_hot == hotel_selected(), lead_lag] == "lagger") {
       rec <- rbind(
         rec,
-        data.table(Recommendation = "Compared to your peers, your hotel receives bad scoring. You really need to improve!")
+        data.table(Recommendation = "Compared to your peers, your hotel receives bad scoring. You really need to improve! Inspect drivers of statistical tree model to deduce insights.")
       )
     }
     
@@ -266,7 +266,7 @@ shinyServer(function(input, output, session) {
     dt <- DT::datatable(
       rec, 
       options = list(paging = F, pageLength = 5, searching = F, sort = F, scrollX = F),
-      rownames = F, 
+      rownames = T, 
       selection = "none" 
     ) 
     return(dt)
