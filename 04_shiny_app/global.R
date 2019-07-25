@@ -29,6 +29,7 @@ options(shiny.maxRequestSize=10*1024^2) # Set upload limit for inputFile to 10MB
 library(readxl) # Reading from xlsx
 library(ggmap) # Labels in scatterplot
 library(leaflet) # Interative maps
+library(ggrepel) # Label in plots
 source("lib_general.R")
 
 # ###############################################################################################-
@@ -41,7 +42,12 @@ VERSION <- "Version 1.0"
 # Central place to store porject wide settings
 # ===============================================================================================-
 opt <- list()
-
+# Define colors
+opt$ci <- list()
+opt$ci$cap_blue <- rgb(0, 112, 173, maxColorValue = 255)
+opt$ci$vibrant_blue <- rgb(18, 171, 219, maxColorValue = 255)
+opt$ci$tech_red <- rgb(255, 48, 76, maxColorValue = 255)
+opt$ci$deep_purple <- rgb(43, 10, 61, maxColorValue = 255)
 
 # ###############################################################################################-
 # STEP 3: Function definitions ----

@@ -29,7 +29,7 @@ shinyUI(
     theme = "style.css",
     h1(img(src = "", height=45, hspace="0px", vspace="5px", 
            style="margin-left: -14px; margin-right: 20px;"),
-      span(s$title)
+       span(s$title)
     ),
     # ==========================================================================================-
     # Sidebar 
@@ -50,30 +50,33 @@ shinyUI(
              ), # end fluidRow
              fluidRow(
                column(12,
-                      wellPanel(
-                        h2("Filter hotels"),
-                        # ======================================================================-
-                        # Select ... ----
-                        # ======================================================================-
-                        selectInput("sel_cluster", "Choose cluster",
-                                    c("all", "1", "2", "3",  "4",  "5"),
-                                    selected = "all"
-                        ),
-                        # ======================================================================-
-                        # Select ... ----
-                        # ======================================================================-
-                        selectInput("sel_leadlag", "Choose leader or lagger",
-                                    c("all", "leader", "lagger", "middle"),
-                                    selected = "all"
-                        ),
-                        # ======================================================================-
-                        # Select ... ----
-                        # ======================================================================-
-                        selectInput("sel_city", "Choose city",
-                                    c("all", "Amsterdam", "London", "Paris", "Barcelona", "Milan", "Vienna"),
-                                    selected = "all"
-                        )
-                      ) # end wellPanel
+                      conditionalPanel(
+                        condition ="typeof input.dt_hotel_list_rows_selected  === 'undefined' || input.dt_hotel_list_rows_selected.length <= 0",
+                        wellPanel(
+                          h2("Filter hotels"),
+                          # ======================================================================-
+                          # Select ... ----
+                          # ======================================================================-
+                          selectInput("sel_cluster", "Choose cluster",
+                                      c("all", "1", "2", "3",  "4",  "5"),
+                                      selected = "all"
+                          ),
+                          # ======================================================================-
+                          # Select ... ----
+                          # ======================================================================-
+                          selectInput("sel_leadlag", "Choose leader or lagger",
+                                      c("all", "leader", "lagger", "middle"),
+                                      selected = "all"
+                          ),
+                          # ======================================================================-
+                          # Select ... ----
+                          # ======================================================================-
+                          selectInput("sel_city", "Choose city",
+                                      c("all", "Amsterdam", "London", "Paris", "Barcelona", "Milan", "Vienna"),
+                                      selected = "all"
+                          )
+                        ) # end wellPanel
+                      ) # end conditionalPanel
                ) # end column
              ) # end fluidRow
       ), # end column
@@ -90,15 +93,16 @@ shinyUI(
                ) # end column
              ), # end fluidRow
              fluidRow(
-               column(12, 
+               column(6, 
                       conditionalPanel(
                         condition ="typeof input.dt_hotel_list_rows_selected  !== 'undefined' && input.dt_hotel_list_rows_selected.length > 0",
                         wellPanel(
-                          h2("Recommendations for store manager"),
+                          h2("Benchmark mean hotel score with peers"),
                           # ======================================================================-
                           # Table 2 ----
                           # ======================================================================-
-                          dataTableOutput("dt2")
+                          plotOutput(outputId = "plot_benchmarks", 
+                                     height = "200px")
                         ) # end wellPanel
                       ) # end conditionalPanel
                ) # end column

@@ -23,7 +23,7 @@ shinyServer(function(input, output, session) {
   # #############################################################################################-
   # STEP 2: Observers (to have dynamic input elements) ----
   # #############################################################################################-
-
+  
   
   # #############################################################################################-
   # STEP 3: Reactive expressions (to optimize runtime) ----
@@ -47,6 +47,16 @@ shinyServer(function(input, output, session) {
     
     
     return(dt)
+  })
+  
+  hotel_selected <- reactive({
+    if(is.null(input$dt_hotel_list_rows_selected)){
+      hot_sel <- NULL
+    } else{
+      dt <- hotel_data()
+      hot_sel <- dt[input$dt_hotel_list_rows_selected, id_hot]
+    }
+    return(hot_sel)
   })
   
   # #############################################################################################-
@@ -83,26 +93,48 @@ shinyServer(function(input, output, session) {
   # =============================================================================================-
   output$map_hotel <- renderLeaflet({
     data <- hotel_data()
+    # Only show one hotel when selected
+    if(!is.null(hotel_selected())) {
+      data <- data[id_hot == hotel_selected()]
+    }
     leaflet(data = data) %>% 
       addProviderTiles('OpenStreetMap.Mapnik') %>% 
       addMarkers(popup = ~Hotel_Address, clusterOptions = markerClusterOptions())
   })
   
   # =============================================================================================-
-  # dt2 ----
-  # Description     : 
+  # plot_benchmarks ----
+  # Description     : Plot plot_benchmarks 
   # Input           : 
   # Output          : 
-  # Review status   : DEV
+  # Review status   : 
   # =============================================================================================-
-  output$dt2 <- DT::renderDataTable(
-    DT::datatable(data = {
-      # Read data
-      dt <- data.table(id = 1:10, value = runif(n = 10))
-      return(dt)
-    }), 
-    options = list(paging = T, pageLength = 5, searching = T, sort = T, scrollX = T)
-  )
+  output$plot_benchmarks <- renderPlot({
+    if (is.null(hotel_selected()))
+      return(NULL)
+    
+    dt <- hotel_data()
+    # Get hotel info
+    clus_hot <- dt[id_hot == hotel_selected(), clus]
+    target <- dt[id_hot == hotel_selected(), unique(score_q75)]
+    val <- dt[id_hot == hotel_selected(), score_hot_mean]
+    p <- ggplot(dt[clus == clus_hot]) +
+      geom_density(aes(x = score_hot_mean), fill = opt$ci$vibrant_blue, color = "white")  + 
+      geom_vline(xintercept = target, color = opt$ci$deep_purple, size = 2) +
+      geom_vline(xintercept = val, color = opt$ci$tech_red, size = 2, linetype="solid") +
+      geom_label_repel(data = data.table(x = c(target, val)), 
+                       aes(x = x, y = 0), 
+                       label = c(paste0("Target value: ", round(target)), 
+                                 paste0("Your hotel: ", round(val))), 
+                       box.padding = unit(0.5, "lines"),
+                       point.padding = unit(0.5, "lines"),
+                       segment.color = 'black',
+                       color = "black",
+                       size = 6) +
+      xlab("Mean hotel score") + 
+      theme(text = element_text(size = 14)) 
+    return(p)
+  })
   
   # =============================================================================================-
   # Description     : close the R session when browser closes
