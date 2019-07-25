@@ -54,6 +54,12 @@ shinyServer(function(input, output, session) {
     return(dt)
   })
   
+  review_abt <- reactive({
+    # some processing
+    dt <- readRDS("data/80_abt_rev.rds")
+    return(dt)
+  })
+  
   hotel_selected <- reactive({
     if(is.null(input$dt_hotel_list_rows_selected)){
       hot_sel <- NULL
@@ -163,6 +169,48 @@ shinyServer(function(input, output, session) {
       xlab("Time") + 
       ylab("Reviewer score") + 
       geom_smooth(method = 'lm')
+    return(p)
+  })
+  
+  # =============================================================================================-
+  # plot_tree ----
+  # Description     :  
+  # Input           : 
+  # Output          : 
+  # Review status   : 
+  # =============================================================================================-
+  output$plot_tree <- renderPlot({
+    if (is.null(hotel_selected()))
+      return(NULL)
+    # Settings for modeling
+    s <- list()
+    # Define hotel of interest
+    s$id_hot <- hotel_selected()
+    # Define target variable
+    s$target <- 'Reviewer_Score'
+    # Define features
+    s$feat <- setdiff(names(abt_rev), c('id_rev', 'id_hot', s$target))
+    
+    # Get data
+    abt_rev <- review_abt()
+    set.seed(123) # Random seed to create reproducible results
+    
+    # Use resamling using bootstrap method to validate model
+    ctrl <- trainControl(method = "boot", 
+                         number = 20)
+    grid <- expand.grid(.mincriterion = .95, # request a p-value of 0.05 for each split
+                        .maxdepth =  as.integer(1:3) # Max tree depth of 3
+                        )
+    fit <- train(
+      x = abt_rev[id_hot == s$id_hot, s$feat, with = F],
+      y = abt_rev[id_hot == s$id_hot, get(s$target)],
+      method = "ctree2", # rpart, rpart1SE
+      trControl = ctrl, 
+      # controls = ctree_control(minbucket = 50),
+      metric = "Rsquared", # Accuracy
+      tuneGrid = grid) # set to NULL to swich off tuning grid
+    # plot final model
+    p <- plot(fit$finalModel, type = "simple")
     return(p)
   })
   

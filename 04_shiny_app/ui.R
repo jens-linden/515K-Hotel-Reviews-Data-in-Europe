@@ -119,7 +119,22 @@ shinyUI(
                         ) # end wellPanel
                       ) # end conditionalPanel
                ) # end column
-             ) # end fluidRow
+             ), # end fluidRow
+             fluidRow(
+               column(12, 
+                      conditionalPanel(
+                        condition ="typeof input.dt_hotel_list_rows_selected  !== 'undefined' && input.dt_hotel_list_rows_selected.length > 0",
+                        wellPanel(
+                          h2("Inspect drivers for hotel review scores"),
+                          # ======================================================================-
+                          # Plot tree ----
+                          # ======================================================================-
+                          plotOutput(outputId = "plot_tree", 
+                                     height = "200px")
+                        ) # end wellPanel
+                      ) # end conditionalPanel
+               ) # end column
+             ) # end fluid row
       ) # end column
     ) # end fluidRow
   ) # end fluidPage
