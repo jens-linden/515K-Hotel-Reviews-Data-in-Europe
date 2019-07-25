@@ -30,7 +30,8 @@ install.packages(c('data.table',
                    'tm',
                    'SnowballC', 
                    'caret',
-                   'factoextra'))
+                   'factoextra',
+                   'party'))
 
 
 #################################################################################################+

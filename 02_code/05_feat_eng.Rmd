@@ -102,7 +102,7 @@ The following features should be considered in the future to obtain comparable c
 
 ## Initialise ABT with month
 ```{r}
-abt_rev <- rev[, .(id_rev, month = format(Review_Date,"%B"))]
+abt_rev <- rev[, .(id_rev, id_hot, month = format(Review_Date,"%B"))]
 ```
 
 ## From tags
