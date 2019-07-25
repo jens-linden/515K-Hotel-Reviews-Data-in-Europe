@@ -1,0 +1,72 @@
+/* Suppress error messages in UI */
+.shiny-output-error { visibility: hidden; }
+.shiny-output-error:before { visibility: hidden; }
+
+/* Move pagination controls to top right corner of datatable 
+(overlaps with other elements on small screens) */
+/*.dataTables_paginate {
+  position: absolute;
+  top: 0;
+  right: 0;
+  padding-bottom: 3px;
+  background-color: #f2f2f2;
+  border-radius: 5px;
+  margin-bottom: 2px;
+}*/
+
+h1, h2, h3, h4, p {
+  font-family: 'Verdana';
+  color: #2b143d;
+  margin-top: 0;
+}
+
+h1 {
+  /*color: rgb(18,171,219);*/
+  color: white;
+  font-weight: bold;
+  line-height: 1.0;
+  font-size: 24px;
+  margin: 0;
+  padding: 0;
+}
+
+h2 {
+  color: rgb(0,114,175);
+  font-weight: bold;
+  line-height: 1.1;
+  font-size: 20px;
+  margin-top: 4px;
+}
+
+body {
+  font-size: 12px;
+  /*background-color: #f2f2f2;*/
+  background-color: rgb(43,20,61);
+  margin-top: -6px;
+  overflow-y: scroll;
+}
+
+.container-fluid {
+	margin: 4px;
+	padding-left: 12px;
+	padding-right: 12px;
+}
+
+.well{
+  border: 0;
+  background-color: white;
+  border-radius: 5px;
+  padding: 4px;
+  margin-bottom: 10px;
+  padding-left: 10px;
+  padding-right: 10px;
+}
+
+.datatables, .label, .item {
+  font-family: 'Verdana';
+  font-size: 11px;
+}
+
+.tab-content {
+	margin-top: 10px;
+}

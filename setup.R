@@ -31,7 +31,9 @@ install.packages(c('data.table',
                    'SnowballC', 
                    'caret',
                    'factoextra',
-                   'party'))
+                   'party',
+                   'ggmap',
+                   'DT'))
 
 
 #################################################################################################+
