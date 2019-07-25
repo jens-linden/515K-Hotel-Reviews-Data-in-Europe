@@ -1,5 +1,5 @@
 ---
-title: "30 - Cluster hotels"
+title: "35 - Identify drivers to improve scoring per hotel"
 author: "Jens Linden"
 output:
   html_document:
@@ -41,12 +41,11 @@ options(width = 100)
 (abt_rev <- readRDS(paste0(ROOT, '/01_data/03_preprocessed/abt_rev.rds')))
 # Review data
 (rev <- readRDS(paste0(ROOT, '/01_data/03_preprocessed/reviews.rds')))
-
 ```
 
 # Preprocessing
 
-## Add cluster to hotel hotel ABT
+## Add cluster of hotel hotel ABT
 ```{r}
 # Join on hotel ID
 abt_hot <- merge(abt_hot,
