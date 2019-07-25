@@ -105,6 +105,19 @@ shinyUI(
                                      height = "200px")
                         ) # end wellPanel
                       ) # end conditionalPanel
+               ), # end column
+               column(6, 
+                      conditionalPanel(
+                        condition ="typeof input.dt_hotel_list_rows_selected  !== 'undefined' && input.dt_hotel_list_rows_selected.length > 0",
+                        wellPanel(
+                          h2("Inspect review score trend over time"),
+                          # ======================================================================-
+                          # Table 2 ----
+                          # ======================================================================-
+                          plotOutput(outputId = "plot_trend", 
+                                     height = "200px")
+                        ) # end wellPanel
+                      ) # end conditionalPanel
                ) # end column
              ) # end fluidRow
       ) # end column

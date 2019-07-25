@@ -45,7 +45,12 @@ shinyServer(function(input, output, session) {
       dt <- dt[city == input$sel_city]
     }
     
-    
+    return(dt)
+  })
+  
+  review_data <- reactive({
+    # some processing
+    dt <- readRDS("data/80_res_rev.rds")
     return(dt)
   })
   
@@ -132,7 +137,32 @@ shinyServer(function(input, output, session) {
                        color = "black",
                        size = 6) +
       xlab("Mean hotel score") + 
-      theme(text = element_text(size = 14)) 
+      theme(text = element_text(size = 14)) +
+      ggtitle(paste0("Avg. hotel score compared to distribution of cluster ", clus_hot))  
+      
+    return(p)
+  })
+  
+  # =============================================================================================-
+  # plot_trend ----
+  # Description     :  
+  # Input           : 
+  # Output          : 
+  # Review status   : 
+  # =============================================================================================-
+  output$plot_trend <- renderPlot({
+    if (is.null(hotel_selected()))
+      return(NULL)
+    
+    dt <- review_data()
+    # Get hotel info
+    p <- ggplot(dt[id_hot == hotel_selected()], aes(x = Review_Date, y = Reviewer_Score)) +
+      geom_point() + 
+      theme(text = element_text(size = 14)) +
+      ggtitle(paste0("Reviewer scores for hotel ", hotel_selected(), " over time")) + 
+      xlab("Time") + 
+      ylab("Reviewer score") + 
+      geom_smooth(method = 'lm')
     return(p)
   })
   
