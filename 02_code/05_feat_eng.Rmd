@@ -16,18 +16,18 @@ Create analytics base table for hotels and reviews.
 The following features have been selected or created:
 
 * Hotel
-    - dist_city_centre: Distance of hotel to city centre in meters
-    - Total_Number_of_Reviews: Number of reviews given to hotel as a proxy for the size of the hotel
-    - city: City of hotel
+    - `dist_city_centre`: Distance of hotel to city centre in meters
+    - `Total_Number_of_Reviews`: Number of reviews given to hotel as a proxy for the size of the hotel
+    - `city`: City of hotel
 
 * Review
-    - month: Month when review was given
-    - n_nights: Number of nights the reviewer stayed in the hotel
-    - trip_type: Whether `business trip` or `leisure trip`. `NA`s set to `unknown` when info missing.
-    - is_mobile_device: Whether the trip was booked via a mobile device or not (`yes` or `no`)
-    - group_type: Whether the reviewer travelled alone or in a group. Possible values are `couple`, `solo traveler`,`group`, `family with young children`, `family with older children`, `travelers with friends`, `with a pet`
-    - is_superior_room: Whether a 'superior' room was booked (`yes` or `no`)
-    - room_size: Size of room booked (`single`, `double` or `family`. `NA`s set to `unknown` when info missing.)
+    - `month`: Month when review was given
+    - `n_nights`: Number of nights the reviewer stayed in the hotel
+    - `trip_type`: Whether `business trip` or `leisure trip`. `NA`s set to `unknown` when info missing.
+    - `is_mobile_device`: Whether the trip was booked via a mobile device or not (`yes` or `no`)
+    - `group_type`: Whether the reviewer travelled alone or in a group. Possible values are `couple`, `solo traveler`,`group`, `family with young children`, `family with older children`, `travelers with friends`, `with a pet`
+    - `is_superior_room`: Whether a 'superior' room was booked (`yes` or `no`)
+    - `room_size`: Size of room booked (`single`, `double` or `family`. `NA`s set to `unknown` when info missing.)
 
 # Inits
 Initialisations and loading of libraries required:
