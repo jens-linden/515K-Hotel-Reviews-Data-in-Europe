@@ -59,13 +59,20 @@ res_hot <- merge(hot,
 )
 # Adding distance to mean for later sorting
 res_hot[, score_dist_mean := score_hot_mean - score_clus_mean]
+# Sorting data
+res_hot <- res_hot[order(score_dist_mean)]
+# Removing columns
+res_hot$city_lat <- NULL
+res_hot$city_lng <- NULL
+# Round values
+res_hot[, dist_city_centre := round(dist_city_centre)]
 # Inspect
 res_hot[1:3]
 ```
 
 # Save data
 ```{r}
-saveRDS(abt_hot, paste0(ROOT, '/04_shiny_app/data/80_res_hot.rds'))
+saveRDS(res_hot, paste0(ROOT, '/04_shiny_app/data/80_res_hot.rds'))
 ```
 
 ```{r}

@@ -29,6 +29,14 @@ shinyServer(function(input, output, session) {
   # STEP 3: Reactive expressions (to optimize runtime) ----
   # #############################################################################################-
   
+  hotel_data <- reactive({
+    # some processing
+    dt <- readRDS("data/80_res_hot.rds")
+    if(input$sel_cluster != "all") {
+      dt <- dt[clus == input$sel_cluster]
+    }
+    return(dt)
+  })
   
   # #############################################################################################-
   # STEP 4: Output elements ----
@@ -43,7 +51,7 @@ shinyServer(function(input, output, session) {
   # Review status   : DEV
   # =============================================================================================-
   output$dt_hotel_list <- DT::renderDataTable({
-    data <- readRDS("data/80_res_hot.rds")
+    data <- hotel_data()
     dt <- DT::datatable(
       data, 
       options = list(paging = T, pageLength = 5, searching = T, sort = T, scrollX = T),
@@ -63,7 +71,7 @@ shinyServer(function(input, output, session) {
   # Review status   : DEV
   # =============================================================================================-
   output$map_hotel <- renderLeaflet({
-    data <- readRDS("data/80_res_hot.rds")
+    data <- hotel_data()
     leaflet(data = data) %>% 
       addProviderTiles('OpenStreetMap.Mapnik') %>% 
       addMarkers(popup = ~Hotel_Address, clusterOptions = markerClusterOptions())

@@ -39,19 +39,6 @@ shinyUI(
              fluidRow(
                column(12,
                       wellPanel(
-                        h2("Menue panel"),
-                        # ======================================================================-
-                        # Select ... ----
-                        # ======================================================================-
-                        selectInput("store", "Choose your ...:",
-                                    c("", "16105", "58330", "124573",  "161156",  "229520",  "261059")
-                        )
-                      ) # end wellPanel
-               ) # end column
-             ), # end fluidRow
-             fluidRow(
-               column(12,
-                      wellPanel(
                         h2("Map"),
                         style = "background-color: white;",
                         # ======================================================================-
@@ -60,7 +47,20 @@ shinyUI(
                         leafletOutput("map_hotel")
                       ) # end wellPanel
                ) # end column
-               
+             ), # end fluidRow
+             fluidRow(
+               column(12,
+                      wellPanel(
+                        h2("Filter hotels"),
+                        # ======================================================================-
+                        # Select ... ----
+                        # ======================================================================-
+                        selectInput("sel_cluster", "Choose cluster",
+                                    c("all", "1", "2", "3",  "4",  "5"),
+                                    selected = "all"
+                        )
+                      ) # end wellPanel
+               ) # end column
              ) # end fluidRow
       ), # end column
       column(8,
