@@ -92,7 +92,7 @@ shinyUI(
              fluidRow(
                column(12, 
                       conditionalPanel(
-                        condition = "input.store != ''",
+                        condition ="typeof input.dt_hotel_list_rows_selected  !== 'undefined' && input.dt_hotel_list_rows_selected.length > 0",
                         wellPanel(
                           h2("Recommendations for store manager"),
                           # ======================================================================-
