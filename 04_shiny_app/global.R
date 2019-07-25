@@ -30,6 +30,7 @@ library(readxl) # Reading from xlsx
 library(ggmap) # Labels in scatterplot
 library(leaflet) # Interative maps
 library(ggrepel) # Label in plots
+library(caret) # Classification And REgression Training
 source("lib_general.R")
 
 # ###############################################################################################-

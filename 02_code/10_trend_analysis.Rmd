@@ -103,6 +103,13 @@ ggplot(hot) +
 hot[n_reviews < 30, .N] # 72 hotels have less than 30 reviews; remove when trend is utilzed further
 ```
 
+# Inspect distribution of slopes
+```{r}
+ggplot(hot) + 
+  geom_density(aes(x = rev_trend))
+quantile(hot$rev_trend, probs = c(0.25, 0.75))
+```
+
 
 # Save results to file
 ```{r}

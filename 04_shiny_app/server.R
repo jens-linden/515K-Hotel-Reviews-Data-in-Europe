@@ -32,6 +32,12 @@ shinyServer(function(input, output, session) {
   hotel_data <- reactive({
     # some processing
     dt <- readRDS("data/80_res_hot.rds")
+    return(dt)
+  })
+  
+  hotel_data_filtered <- reactive({
+    # some processing
+    dt <- hotel_data()
     # Filter cluster
     if(input$sel_cluster != "all") {
       dt <- dt[clus == input$sel_cluster]
@@ -44,7 +50,6 @@ shinyServer(function(input, output, session) {
     if(input$sel_city != "all") {
       dt <- dt[city == input$sel_city]
     }
-    
     return(dt)
   })
   
@@ -64,7 +69,7 @@ shinyServer(function(input, output, session) {
     if(is.null(input$dt_hotel_list_rows_selected)){
       hot_sel <- NULL
     } else{
-      dt <- hotel_data()
+      dt <- hotel_data_filtered()
       hot_sel <- dt[input$dt_hotel_list_rows_selected, id_hot]
     }
     return(hot_sel)
@@ -83,10 +88,10 @@ shinyServer(function(input, output, session) {
   # Review status   : DEV
   # =============================================================================================-
   output$dt_hotel_list <- DT::renderDataTable({
-    data <- hotel_data()
+    data <- hotel_data_filtered()
     dt <- DT::datatable(
       data, 
-      options = list(paging = T, pageLength = 5, searching = T, sort = T, scrollX = T),
+      options = list(paging = T, pageLength = 3, searching = T, sort = T, scrollX = T),
       rownames = F, 
       selection = "single" 
     ) %>%
@@ -103,7 +108,7 @@ shinyServer(function(input, output, session) {
   # Review status   : DEV
   # =============================================================================================-
   output$map_hotel <- renderLeaflet({
-    data <- hotel_data()
+    data <- hotel_data_filtered()
     # Only show one hotel when selected
     if(!is.null(hotel_selected())) {
       data <- data[id_hot == hotel_selected()]
@@ -182,6 +187,11 @@ shinyServer(function(input, output, session) {
   output$plot_tree <- renderPlot({
     if (is.null(hotel_selected()))
       return(NULL)
+    
+    # Get data
+    abt_rev <- review_abt()
+    set.seed(123) # Random seed to create reproducible results
+    
     # Settings for modeling
     s <- list()
     # Define hotel of interest
@@ -190,10 +200,6 @@ shinyServer(function(input, output, session) {
     s$target <- 'Reviewer_Score'
     # Define features
     s$feat <- setdiff(names(abt_rev), c('id_rev', 'id_hot', s$target))
-    
-    # Get data
-    abt_rev <- review_abt()
-    set.seed(123) # Random seed to create reproducible results
     
     # Use resamling using bootstrap method to validate model
     ctrl <- trainControl(method = "boot", 
@@ -212,6 +218,58 @@ shinyServer(function(input, output, session) {
     # plot final model
     p <- plot(fit$finalModel, type = "simple")
     return(p)
+  })
+  
+  # =============================================================================================-
+  # dt_rec ----
+  # Description     : 
+  # Input           : 
+  # Output          : 
+  # Review status   : DEV
+  # =============================================================================================-
+  output$dt_rec <- DT::renderDataTable({
+    if (is.null(hotel_selected()))
+      return(NULL)
+    # Get data
+    data <- hotel_data_filtered()
+    
+    # Init results
+    rec <- data.table(Recommendation = NULL)
+    
+    # Trend recommendations
+    thresh_25 <- quantile(data$rev_trend, probs = 0.25)
+    thresh_75 <- quantile(data$rev_trend, probs = 0.75)
+    if(data[id_hot == hotel_selected(), rev_trend] < thresh_25) {
+      rec <- rbind(
+        rec,
+        data.table(Recommendation = "Your scores are getting worse over time. Try to revert the negative trend!")
+      )
+    } else if(data[id_hot == hotel_selected(), rev_trend] > thresh_75) {
+      rec <- rbind(
+        rec,
+        data.table(Recommendation = "Your scores are getting better over time. Continue to improve!")
+      )
+    }
+    # Lagger recommendations
+    if(data[id_hot == hotel_selected(), lead_lag] == "lagger") {
+      rec <- rbind(
+        rec,
+        data.table(Recommendation = "Compared to your peers, your hotel receives bad scoring. You really need to improve!")
+      )
+    }
+    
+    if(nrow(rec) == 0) {
+      rec <- data.table(Recommendation = "There are no recommendations based on the data evaluated.")
+    }
+    
+    # browser()
+    dt <- DT::datatable(
+      rec, 
+      options = list(paging = F, pageLength = 5, searching = F, sort = F, scrollX = F),
+      rownames = F, 
+      selection = "none" 
+    ) 
+    return(dt)
   })
   
   # =============================================================================================-

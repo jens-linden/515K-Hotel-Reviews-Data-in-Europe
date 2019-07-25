@@ -93,6 +93,20 @@ shinyUI(
                ) # end column
              ), # end fluidRow
              fluidRow(
+               column(12, 
+                      conditionalPanel(
+                        condition ="typeof input.dt_hotel_list_rows_selected  !== 'undefined' && input.dt_hotel_list_rows_selected.length > 0",
+                        wellPanel(
+                          h2("Recommendations for hotel management"),
+                          # ======================================================================-
+                          # Recommendations ----
+                          # ======================================================================-
+                          dataTableOutput("dt_rec")
+                        ) # end wellPanel
+                      ) # end conditionalPanel
+               ) # end column
+             ), # end fluid row
+             fluidRow(
                column(6, 
                       conditionalPanel(
                         condition ="typeof input.dt_hotel_list_rows_selected  !== 'undefined' && input.dt_hotel_list_rows_selected.length > 0",
@@ -134,7 +148,7 @@ shinyUI(
                         ) # end wellPanel
                       ) # end conditionalPanel
                ) # end column
-             ) # end fluid row
+             ) # end fluidRow
       ) # end column
     ) # end fluidRow
   ) # end fluidPage

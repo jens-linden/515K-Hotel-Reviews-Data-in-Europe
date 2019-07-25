@@ -147,7 +147,28 @@ saveRDS(res_rev, paste0(ROOT, '/04_shiny_app/data/80_res_rev.rds'))
 saveRDS(abt_rev, paste0(ROOT, '/04_shiny_app/data/80_abt_rev.rds'))
 ```
 
+Test
 ```{r}
-
+res_hot[id_hot == 71]
+dt <- res_hot
+    clus_hot <- dt[id_hot == 71, clus]
+    target <- dt[id_hot == 71, unique(score_q75)]
+    val <- dt[id_hot == 71, score_hot_mean]
+     ggplot(dt[clus == clus_hot]) +
+      geom_density(aes(x = score_hot_mean), fill = opt$ci$vibrant_blue, color = "white")  + 
+      geom_vline(xintercept = target, color = opt$ci$deep_purple, size = 2) +
+      geom_vline(xintercept = val, color = opt$ci$tech_red, size = 2, linetype="solid") +
+      geom_label_repel(data = data.table(x = c(target, val)), 
+                       aes(x = x, y = 0), 
+                       label = c(paste0("Target value: ", round(target)), 
+                                 paste0("Your hotel: ", round(val))), 
+                       box.padding = unit(0.5, "lines"),
+                       point.padding = unit(0.5, "lines"),
+                       segment.color = 'black',
+                       color = "black",
+                       size = 6) +
+      xlab("Mean hotel score") + 
+      theme(text = element_text(size = 14)) +
+      ggtitle(paste0("Avg. hotel score compared to distribution of cluster ", clus_hot))
 ```
 
