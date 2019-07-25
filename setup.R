@@ -23,7 +23,12 @@ install.packages(c('data.table',
                    'leaflet',
                    'sp',
                    'rworldmap',
-                   'digest'))
+                   'digest',
+                   'geosphere',
+                   'stringr',
+                   'tidyr',
+                   'tm',
+                   'SnowballC'))
 
 
 #################################################################################################+

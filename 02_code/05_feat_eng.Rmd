@@ -1,0 +1,326 @@
+---
+title: "05 - Feature engineering"
+author: "Jens Linden"
+output:
+  html_document:
+    number_sections: yes
+    toc: yes
+---
+
+STATUS: Development
+
+# Management summary
+
+Create analytics base table for hotels and reviews. 
+
+The following features have been selected or created:
+
+* Hotel
+    - dist_city_centre: Distance of hotel to city centre in meters
+    - Total_Number_of_Reviews: Number of reviews given to hotel as a proxy for the size of the hotel
+    - city: City of hotel
+
+* Review
+    - month: Month when review was given
+    - n_nights: Number of nights the reviewer stayed in the hotel
+    - trip_type: Whether `business trip` or `leisure trip`. `NA`s set to `unknown` when info missing.
+    - is_mobile_device: Whether the trip was booked via a mobile device or not (`yes` or `no`)
+    - group_type: Whether the reviewer travelled alone or in a group. Possible values are `couple`, `solo traveler`,`group`, `family with young children`, `family with older children`, `travelers with friends`, `with a pet`
+    - is_superior_room: Whether a 'superior' room was booked (`yes` or `no`)
+    - room_size: Size of room booked (`single`, `double` or `family`. `NA`s set to `unknown` when info missing.)
+
+# Inits
+Initialisations and loading of libraries required:
+```{r, warning = FALSE, message = FALSE, results = FALSE}
+rm(list=ls())   # clear all
+graphics.off()  # close all
+Sys.setenv(LANG = "en")
+# Libs
+# library(checkpoint) # Package management to avoid incompatibilities; not required when dockerized
+# checkpoint('2017-10-01') # Use all packages as of date provided
+library(data.table) # Efficient and fast data munging in R; just do it
+options(datatable.auto.index=FALSE) # Bug fixing for v < 1.9.5
+library(ggplot2) # Good quality plots
+library(rprojroot) # Rroot folder management
+ROOT <- find_root(has_file("PROJECT_ROOT_DIR"))
+library(geosphere) # Compute distance of geospatial data
+library(knitr) # Knitting R markdown reports
+library(tidyr) # extract numeric from string
+library(tm)
+source(paste0(ROOT, "/02_code/lib.R"))
+options(width = 100)
+```
+
+# Load data
+```{r}
+(hot <- readRDS(paste0(ROOT, '/01_data/03_preprocessed/hotels.rds')))
+(rev <- readRDS(paste0(ROOT, '/01_data/03_preprocessed/reviews.rds')))
+(tag <- readRDS(paste0(ROOT, '/01_data/03_preprocessed/tags.rds')))
+```
+
+# Hotel
+
+## Distance of hotel from city centre
+```{r}
+dist_ <-  distm(hot[, .(lng, lat)], hot[, .(city_lng, city_lat)], fun = distHaversine)
+hot[, dist_city_centre := diag(dist_)]
+# Inspect
+hot[, .(id_hot, Hotel_Address, dist_city_centre)]
+ggplot(hot[!is.na(dist_city_centre)]) + 
+  geom_histogram(aes(x = dist_city_centre), bins = 50) +
+  facet_grid("city") # Looks plausible
+```
+
+## Size of hotel
+Use proxy as number of total reviews given `Total_Number_of_Reviews`.
+```{r}
+# Inspect
+ggplot(hot) + geom_histogram(aes(x = Total_Number_of_Reviews))
+```
+
+## City
+As country and city are identical, choose city
+```{r}
+hot[, .N, by = city]
+```
+
+## Build analytics base table (ABT) for hotels
+```{r}
+abt_hot <- hot[, .(id_hot, dist_city_centre, Total_Number_of_Reviews, city)]
+abt_hot <- abt_hot[complete.cases(abt_hot)]
+print(abt_hot)
+```
+
+## Open points
+The following features should be considered in the future to obtain comparable cluster of hotels:
+
+* Stars: Category of hotel (e.g. 5 stars) is already a comparison indicator and should be utilized to determine peer hotels
+* Price: Average room price of hotel
+
+
+# Reviews
+
+## Initialise ABT with month
+```{r}
+abt_rev <- rev[, .(id_rev, month = format(Review_Date,"%B"))]
+```
+
+## From tags
+
+Get stats
+```{r}
+(tag_stats <- tag[, .N, by = tag][order(N, decreasing = T)])
+```
+
+
+### Number of stayed nights
+```{r}
+# Inspect
+tag_stats[grepl(pattern = "stayed", x = tag)]
+# Extract number of nights
+tag[grepl(pattern = "stayed", x = tag), 
+    n_nights := extract_numeric(tag)]
+# Plausicheck
+print(tag) # Visual
+tag[!is.na(n_nights)][, sum(duplicated(id_rev))] # ok, only one night tag for each review
+# Add to abt
+(abt_rev <- merge(abt_rev,
+                 tag[!is.na(n_nights), .(id_rev, n_nights)],
+                 by = 'id_rev',
+                 all.x = T))
+```
+
+Cleanup
+```{r}
+# Remove used tags
+tag <- tag[!grepl(pattern = "stayed", x = tag)]
+tag$n_nights <- NULL
+# Recompute tag statistics
+(tag_stats <- tag[, .N, by = tag][order(N, decreasing = T)])
+```
+
+
+### Trip type
+Whether leisure or business
+```{r}
+# Check tag labels
+tag_stats[!grepl(pattern = "triple", x = tag) & grepl(pattern = "trip", x = tag)]
+# Plausicheck
+tag[tag %in% c('leisure trip', 'business trip')][, sum(duplicated(id_rev))] # ok, only one type for each review
+# Add to abt
+(abt_rev <- merge(abt_rev,
+                 tag[tag %in% c('leisure trip', 'business trip'), .(id_rev, trip_type = tag)],
+                 by = 'id_rev',
+                 all.x = T))
+# Set NA to 'unknown'
+abt_rev[is.na(trip_type)]
+abt_rev[is.na(trip_type), trip_type := 'unknown']
+# Inspect
+print(abt_rev[1:3])
+```
+
+Cleanup
+```{r}
+# Remove tags used
+tag <- tag[tag %ni% c('leisure trip', 'business trip')]
+# Recompute tag statistics
+(tag_stats <- tag[, .N, by = tag][order(N, decreasing = T)])
+```
+
+### Mobile device booker
+```{r}
+# Check tag labels
+tag_stats[grepl(pattern = "device", x = tag) ]
+tag[grepl(pattern = "device", x = tag)][, sum(duplicated(id_rev))]
+# Add to abt
+ids_mobile <- tag[tag %in% c('submitted from a mobile device'), id_rev]
+abt_rev[id_rev %in% ids_mobile, is_mobile_device := 'yes']
+abt_rev[id_rev %ni% ids_mobile, is_mobile_device := 'no']
+# Inspect
+abt_rev[1:3]
+abt_rev[, .N, by = is_mobile_device]
+```
+
+Cleanup
+```{r}
+# Remove tags used
+tag <- tag[tag %ni% c('submitted from a mobile device')]
+# Recompute tag statistics
+(tag_stats <- tag[, .N, by = tag][order(N, decreasing = T)])
+```
+
+### Group type
+```{r}
+# Show remaining tags, which do not contain room
+tag_stats[!grepl(pattern = "room", x = tag), ][1:20]
+# Define relevant tags for group type
+tags_group <- c('couple',
+               'solo traveler',
+               'group',
+               'family with young children',
+               'family with older children',
+               'travelers with friends',
+               'with a pet')
+# Check duplicates
+tag[tag %in% tags_group][, sum(duplicated(id_rev))]
+# Yes, multiple choices are possible. However, only a few, so ignore
+(abt_rev <- merge(abt_rev,
+                 tag[tag %in% tags_group][!duplicated(id_rev)][, .(id_rev, group_type = tag)],
+                 by = 'id_rev',
+                 all.x = T))
+# Any NAs?
+abt_rev[is.na(group_type)] # No, good! Group type was specified for each review.
+```
+
+Cleanup
+```{r}
+# Remove tags used
+tag <- tag[tag %ni% tags_group]
+rm(tags_group)
+# Recompute tag statistics
+(tag_stats <- tag[, .N, by = tag][order(N, decreasing = T)])
+```
+
+### Superior room
+```{r}
+# Inspect tags indicating superior
+tag_stats[grepl(pattern = "superior", x = tag) |
+           grepl(pattern = "deluxe", x = tag) , ]
+tag_stats[grepl(pattern = "executive", x = tag) , ]
+tag_stats[grepl(pattern = "king room", x = tag) |
+           grepl(pattern = "queen room", x = tag) , ]
+tag_stats[grepl(pattern = "king suite", x = tag) |
+           grepl(pattern = "queen suite", x = tag) , ]
+# Define flag for superior
+tag[grepl(pattern = "superior", x = tag) |
+      grepl(pattern = "deluxe", x = tag) |
+      grepl(pattern = "executive", x = tag) |
+      grepl(pattern = "king room", x = tag) |
+      grepl(pattern = "queen room", x = tag) |
+      grepl(pattern = "king suite", x = tag) |
+      grepl(pattern = "queen suite", x = tag),
+    is_superior_room := 'yes']
+print(tag)
+# Check
+tag[is_superior_room == 'yes', sum(duplicated(id_rev))] # good, no dups
+# Add to abt
+(abt_rev <- merge(abt_rev,
+                 tag[is_superior_room == 'yes', .(id_rev, is_superior_room)],
+                 by = 'id_rev',
+                 all.x = T))
+abt_rev[is.na(is_superior_room), is_superior_room := 'no']
+abt_rev[, .N, by = is_superior_room]
+```
+
+Cleanup
+```{r}
+tag$is_superior_room <- NULL
+```
+
+### Room size
+```{r}
+# Inspect
+tag_stats[1:50]
+# Double rooms
+(tags_double <- tag_stats[grepl(pattern = "double", x = tag) |
+                           grepl(pattern = "twin", x = tag), tag])
+tag[tag %in% tags_double, room_size := 'double']
+# Single rooms 
+tag[grepl(pattern = "single room", x = tag) |
+      grepl(pattern = "single suite", x = tag), room_size := 'single']
+# Family rooms
+tag_stats[grepl(pattern = "family", x = tag)]
+tag[grepl(pattern = "family", x = tag), room_size := 'family']
+# Check dups
+tag[!is.na(room_size), sum(duplicated(id_rev))] # No duplicates, good.
+# Add to abt
+(abt_rev <- merge(abt_rev,
+                 tag[!is.na(room_size), .(id_rev, room_size)],
+                 by = 'id_rev',
+                 all.x = T))
+abt_rev[is.na(room_size), room_size := 'unknown']
+print(abt_rev)
+# Plausichecks
+abt_rev[, .N, by = room_size]
+ids_unkn <- abt_rev[room_size == 'unknown', id_rev]
+# Cross check in review data
+rev[id_rev %in% ids_unkn, .(tag_split)] # Looks indeed, that from some review tags, the room size cannot be deduced
+
+```
+
+Cleanup
+```{r}
+rm(ids_unkn)
+tag$room_size <- NULL
+tag <- tag[!(grepl(pattern = "room", x = tag) |
+      grepl(pattern = "suite", x = tag))]
+# Recompute tag statistics
+(tag_stats <- tag[, .N, by = tag][order(N, decreasing = T)])
+tag_stats[1:50]
+# Most tags processed, leave it here.
+```
+
+## From text reviews
+
+
+### tst
+
+```{r}
+# # Create corpus
+# corp <- Corpus(VectorSource(rev$Negative_Review))
+# # Pre-Processing
+# getTransformations()
+# corp <- tm_map(corp, stripWhitespace) # removing extra spaces (keeping only single space)
+# corp <- tm_map(corp, tolower) # transforming to lower case
+# corp <- tm_map(corp, removeNumbers)
+# corp <- tm_map(corp, stemDocument)
+```
+
+
+
+# Save data
+```{r}
+saveRDS(abt_hot,  paste0(ROOT, '/01_data/03_preprocessed/abt_hot.rds'))
+saveRDS(abt_rev,  paste0(ROOT, '/01_data/03_preprocessed/abt_rev.rds'))
+```
+

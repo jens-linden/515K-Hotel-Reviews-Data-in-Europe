@@ -35,6 +35,8 @@ The following hypotheses have been tested:
 | H01-09 | There exists a well defined short lists of tags used | No, in total there are 2,428 different tags. However, the most frequently used 25 tags make up 87% of all tags. |
 | H01-10 | The number of reviews per hotel strongly differs | Yes. There are hotels with nearly 5,000 reviews within the two years observed and hotels with less than 10 reveiews. |
 | H01-11 | The review data contains only data of still existing and operating hotels | Yes, apart from one hotel, for which no recent (in 2017) reviews exist. All other hotels appear to have constantly received reviews during the observation period. |
+| H01-12 | The reviews come from travellers all over the globe and the review data set is unbiased with respect to a reviewer nationality | No, 48% of reviews are given by British citizen, hence the United Kingdom is heavily over-represented |
+| H01-13 | Most reviewers have in total only provided a few reviews | Yes, most reviewers have provided only a single review, 64% of reviewers have provided 5 or less reviews.
 
 
 # Inits
@@ -59,6 +61,7 @@ library(sp) # Spatial data package
 library(rworldmap) # Enables mapping of country level and gridded user datasets.
 library(digest) # Hash computation
 library(tidyr) # E.g. unnest data table for tags
+library(stringr)
 source(paste0(ROOT, "/02_code/lib.R"))
 options(width = 100)
 ```
@@ -169,7 +172,7 @@ rev[, .N, by = country]
 # Look at column names
 names(rev)
 # Pick hotel related columns
-cols_hot <- c('Hotel_Name', 'Hotel_Address', 'country', 'lat', 'lng')
+cols_hot <- c('Hotel_Name', 'Hotel_Address', 'country', 'lat', 'lng', 'Total_Number_of_Reviews')
 # Inspect
 rev[1:3, cols_hot, with = F]
 # Take only unique entries
@@ -267,7 +270,7 @@ hot[country == "Austria", c('city', 'city_lat', 'city_lng') := list('Vienna', 48
 ```
 
 
-## Add number of reviews per hotel
+## Add number of reviews per hotel within dataset
 ```{r}
 # Compute and add number of reviews column
 hot <- merge(hot,
@@ -419,6 +422,10 @@ Tags are given as nested elements with a 1:n relationship for review and tag. Ge
 ```{r}
 # Split tag with respect to ','
 rev[, tag_split := strsplit(rev[, Tags], ',')]
+# Add number of tags to review data table
+rev[, n_tags := str_count(Tags, ',') + 1]
+# How many tags per review?
+rev[, .N, by = n_tags][order(N)]
 # Extract nested list to data table in long format
 tags <- unnest(rev[, .(id_rev, tag_split)])
 # Inspect 
@@ -435,6 +442,8 @@ print(tags)
 ```
 
 ## Inspect most frequent tag data
+
+Create stats table for tag data.
 ```{r}
 # Inspect count
 (tag_stats <- tags[, .N, by = tag][order(N, decreasing = T)]) # 2428 different tags
@@ -463,12 +472,40 @@ tag_stats[!grepl(pattern = "stay", x = tag), tag][1:25]
 ```{r}
 tag_stats[grepl(pattern = "room", x = tag)]
 # Most tags are concerned with the room
-tag_stats[grepl(pattern = "room", x = tag)][1:25]
+tag_stats[grepl(pattern = "room", x = tag)][1:50]
+```
+
+## Inspect tags other than room or stays
+```{r}
 # Inspect remaining tags
 tag_stats[!grepl(pattern = "room", x = tag) &
            !grepl(pattern = "stay", x = tag), 
-          tag][1:25]
+          ][1:25]
 ```
+
+# Reviewer data
+The only attributes of the guest within data are:
+
+* Total_Number_of_Reviews_Reviewer_Has_Given: Number of Reviews the reviewers has given in the past.
+* Reviewer_Nationality
+
+Inspect Total_Number_of_Reviews_Reviewer_Has_Given
+```{r}
+rev[, .N, by = Total_Number_of_Reviews_Reviewer_Has_Given][order(N)]
+ggplot(rev) + 
+  geom_histogram(aes(x = Total_Number_of_Reviews_Reviewer_Has_Given))
+# How many percentage of reveiwers have given less or equal to 5 reviews?
+rev[Total_Number_of_Reviews_Reviewer_Has_Given %in% 1:5, .N] / nrow(rev)
+```
+
+Inspect Reviewer_Nationality
+```{r}
+rev[, .N, by = Reviewer_Nationality][order(N, decreasing = T)]
+rev[, .N, by = Reviewer_Nationality][order(N, decreasing = T)][1:20]
+# Perdentage of British
+rev[Reviewer_Nationality == 'United Kingdom', .N] / nrow(rev)
+```
+
 
 
 
