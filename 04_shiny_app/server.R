@@ -36,20 +36,38 @@ shinyServer(function(input, output, session) {
   
   
   # =============================================================================================-
-  # dt1 ----
+  # dt_hotel_list ----
   # Description     : 
   # Input           : 
   # Output          : 
   # Review status   : DEV
   # =============================================================================================-
-  output$dt1 <- DT::renderDataTable(
-    DT::datatable(data = {
-      # Read data
-      dt <- data.table(id = 1:10, value = runif(n = 10))
-      return(dt)
-    }), 
-    options = list(paging = T, pageLength = 5, searching = T, sort = T, scrollX = T)
-  )
+  output$dt_hotel_list <- DT::renderDataTable({
+    data <- readRDS("data/80_res_hot.rds")
+    dt <- DT::datatable(
+      data, 
+      options = list(paging = T, pageLength = 5, searching = T, sort = T, scrollX = T),
+      rownames = F, 
+      selection = "single" 
+    ) %>%
+      formatRound(c("score_clus_mean", "score_hot_mean", "score_q25", "score_q75", "score_dist_mean"),
+                  digits = 1) 
+    return(dt)
+  })
+  
+  # =============================================================================================-
+  # map_hotel ----
+  # Description     : 
+  # Input           : 
+  # Output          : 
+  # Review status   : DEV
+  # =============================================================================================-
+  output$map_hotel <- renderLeaflet({
+    data <- readRDS("data/80_res_hot.rds")
+    leaflet(data = data) %>% 
+      addProviderTiles('OpenStreetMap.Mapnik') %>% 
+      addMarkers(popup = ~Hotel_Address, clusterOptions = markerClusterOptions())
+  })
   
   # =============================================================================================-
   # dt2 ----

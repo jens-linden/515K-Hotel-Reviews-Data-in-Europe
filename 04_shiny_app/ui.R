@@ -27,7 +27,8 @@ shinyUI(
   fluidPage(
     title = s$title ,
     theme = "style.css",
-    h1(
+    h1(img(src = "", height=45, hspace="0px", vspace="5px", 
+           style="margin-left: -14px; margin-right: 20px;"),
       span(s$title)
     ),
     # ==========================================================================================-
@@ -51,12 +52,12 @@ shinyUI(
              fluidRow(
                column(12,
                       wellPanel(
-                        h2("Menue panel"),
-                        style = "background-color: white;"
+                        h2("Map"),
+                        style = "background-color: white;",
                         # ======================================================================-
                         # xxx ----
                         # ======================================================================-
-
+                        leafletOutput("map_hotel")
                       ) # end wellPanel
                ) # end column
                
@@ -66,11 +67,11 @@ shinyUI(
              fluidRow(
                column(12,
                       wellPanel(
-                        h2("Content panel"),
+                        h2("List of hotels"),
                         # ======================================================================-
                         # Table 1 ----
                         # ======================================================================-
-                        dataTableOutput("dt1")
+                        dataTableOutput("dt_hotel_list")
                       ) # end wellPanel
                ) # end column
              ), # end fluidRow

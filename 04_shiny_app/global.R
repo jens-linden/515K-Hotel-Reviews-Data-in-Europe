@@ -28,6 +28,7 @@ library(openxlsx) # Simplifies the creation of Excel .xlsx files
 options(shiny.maxRequestSize=10*1024^2) # Set upload limit for inputFile to 10MB
 library(readxl) # Reading from xlsx
 library(ggmap) # Labels in scatterplot
+library(leaflet) # Interative maps
 source("lib_general.R")
 
 # ###############################################################################################-
