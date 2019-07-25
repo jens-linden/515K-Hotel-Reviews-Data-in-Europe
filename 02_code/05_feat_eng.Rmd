@@ -300,21 +300,9 @@ tag_stats[1:50]
 # Most tags processed, leave it here.
 ```
 
-## From text reviews
+## Open points
+Extract features from review texts, e.g. taking most frequent keywords for each hotel with positive and negative reviews, respectively.
 
-
-### tst
-
-```{r}
-# # Create corpus
-# corp <- Corpus(VectorSource(rev$Negative_Review))
-# # Pre-Processing
-# getTransformations()
-# corp <- tm_map(corp, stripWhitespace) # removing extra spaces (keeping only single space)
-# corp <- tm_map(corp, tolower) # transforming to lower case
-# corp <- tm_map(corp, removeNumbers)
-# corp <- tm_map(corp, stemDocument)
-```
 
 
 
