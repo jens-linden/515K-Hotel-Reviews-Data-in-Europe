@@ -41,6 +41,8 @@ options(width = 100)
 (abt_rev <- readRDS(paste0(ROOT, '/01_data/03_preprocessed/abt_rev.rds')))
 # Review data
 (rev <- readRDS(paste0(ROOT, '/01_data/03_preprocessed/reviews.rds')))
+# Trend analysis results
+(rev_trend <- readRDS(paste0(ROOT, '/01_data/04_results/10_rev_trend.rds')))
 ```
 
 # Prepare hotel data
@@ -59,6 +61,10 @@ res_hot <- merge(hot,
 )
 # Adding distance to mean for later sorting
 res_hot[, score_dist_mean := score_hot_mean - score_clus_mean]
+# Adding trend analysis results
+res_hot <- merge(res_hot,
+                 rev_trend,
+                 by = 'id_hot')
 # Sorting data
 res_hot <- res_hot[order(score_dist_mean)]
 # Removing columns
