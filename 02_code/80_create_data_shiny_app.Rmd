@@ -82,10 +82,61 @@ res_hot[, dist_city_centre := round(dist_city_centre)]
 res_hot[1:3]
 ```
 
-# Prepare review data
+# Prepare review raw data
 ```{r}
 rev[1:2] 
+# Select columns
 res_rev <- rev[, .(id_rev, id_hot, Review_Date, Reviewer_Score, Reviewer_Nationality)]
+```
+
+# Prepare review abt
+
+## Convert variable types
+```{r}
+# Identify character columns
+(cols_char <- setdiff(dt_classes(abt_rev)[class == 'character', col], 'id_rev'))
+# Convert to factors (categorical variables)
+abt_rev[, (cols_char) := lapply(.SD, as.factor), .SDcols = cols_char]
+# Check if worked
+dt_classes(abt_rev)
+```
+
+## Add variables to review ABT
+```{r}
+abt_rev <- merge(abt_rev,
+                 rev[, .(id_rev, Total_Number_of_Reviews_Reviewer_Has_Given, Reviewer_Score)],
+                 by = 'id_rev')
+# Inspect
+abt_rev[1:3]
+```
+
+# Compute regression tree model per hotel
+
+
+
+## Settings for modeling
+```{r}
+s <- list()
+# Define hotel of interest
+s$id_hot <- 3
+# Define target variable
+s$target <- 'Reviewer_Score'
+# Define features
+(s$feat <- setdiff(names(abt_rev), c('id_rev', 'id_hot', s$target)))
+```
+
+
+
+
+## Settings for modeling
+```{r}
+s <- list()
+# Define hotel of interest
+s$id_hot <- 3
+# Define target variable
+s$target <- 'Reviewer_Score'
+# Define features
+(s$feat <- setdiff(names(abt_rev), c('id_rev', 'id_hot', s$target)))
 ```
 
 
@@ -93,6 +144,7 @@ res_rev <- rev[, .(id_rev, id_hot, Review_Date, Reviewer_Score, Reviewer_Nationa
 ```{r}
 saveRDS(res_hot, paste0(ROOT, '/04_shiny_app/data/80_res_hot.rds'))
 saveRDS(res_rev, paste0(ROOT, '/04_shiny_app/data/80_res_rev.rds'))
+saveRDS(abt_rev, paste0(ROOT, '/04_shiny_app/data/80_abt_rev.rds'))
 ```
 
 ```{r}
